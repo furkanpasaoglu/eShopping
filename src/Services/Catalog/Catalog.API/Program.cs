@@ -1,3 +1,48 @@
+using Scalar.AspNetCore;
+
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddOpenApi();
+
 var app = builder.Build();
+
+app.MapOpenApi();
+app.MapScalarApiReference(options =>
+{
+    options.Title = "Catalog API";
+});
+
+var group = app.MapGroup("/api/v1/catalog").WithTags("Catalog");
+
+group.MapGet("/products", () =>
+    TypedResults.Ok(new[]
+    {
+        new ProductResponse(Guid.NewGuid(), "Laptop Pro 15", "High-performance laptop", 1299.99m, "Electronics", 50),
+        new ProductResponse(Guid.NewGuid(), "Wireless Mouse", "Ergonomic wireless mouse", 29.99m, "Accessories", 200)
+    }))
+    .WithName("GetProducts");
+
+group.MapGet("/products/{id:guid}", (Guid id) =>
+    TypedResults.Ok(new ProductResponse(id, "Laptop Pro 15", "High-performance laptop", 1299.99m, "Electronics", 50)))
+    .WithName("GetProductById");
+
+group.MapPost("/products", (CreateProductRequest request) =>
+{
+    var id = Guid.NewGuid();
+    return TypedResults.Created($"/api/v1/catalog/products/{id}",
+        new ProductResponse(id, request.Name, request.Description, request.Price, request.Category, request.Stock));
+})
+    .WithName("CreateProduct");
+
+group.MapPut("/products/{id:guid}", (Guid id, CreateProductRequest request) =>
+    TypedResults.NoContent())
+    .WithName("UpdateProduct");
+
+group.MapDelete("/products/{id:guid}", (Guid id) =>
+    TypedResults.NoContent())
+    .WithName("DeleteProduct");
+
 app.Run();
+
+record ProductResponse(Guid Id, string Name, string Description, decimal Price, string Category, int Stock);
+record CreateProductRequest(string Name, string Description, decimal Price, string Category, int Stock);
