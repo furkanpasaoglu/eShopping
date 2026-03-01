@@ -1,7 +1,9 @@
 using Scalar.AspNetCore;
+using ServiceDefaults;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.AddServiceDefaults();
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
@@ -11,6 +13,7 @@ app.MapScalarApiReference(options =>
 {
     options.Title = "Catalog API";
 });
+app.MapDefaultEndpoints();
 
 var group = app.MapGroup("/api/v1/catalog").WithTags("Catalog");
 
