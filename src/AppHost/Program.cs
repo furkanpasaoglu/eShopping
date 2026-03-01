@@ -1,7 +1,7 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
 var keycloak = builder.AddKeycloak("keycloak", port: 8080)
-    .WithRealmImport("./keycloak/");
+    .WithRealmImport("./keycloak/eshopping-realm.json");
 
 var catalogApi = builder.AddProject<Projects.Catalog_API>("catalog-api");
 var basketApi = builder.AddProject<Projects.Basket_API>("basket-api");
