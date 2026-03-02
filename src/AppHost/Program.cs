@@ -3,7 +3,12 @@ var builder = DistributedApplication.CreateBuilder(args);
 var keycloak = builder.AddKeycloak("keycloak", port: 8080)
     .WithRealmImport("./keycloak/eshopping-realm.json");
 
-var catalogApi = builder.AddProject<Projects.Catalog_API>("catalog-api");
+var mongo = builder.AddMongoDB("mongo");
+var catalogDb = mongo.AddDatabase("catalog-db");
+
+var catalogApi = builder.AddProject<Projects.Catalog_API>("catalog-api")
+    .WithReference(catalogDb)
+    .WaitFor(catalogDb);
 var basketApi = builder.AddProject<Projects.Basket_API>("basket-api");
 var paymentApi = builder.AddProject<Projects.Payment_API>("payment-api");
 var notificationWorker = builder.AddProject<Projects.Notification_Worker>("notification-worker");
