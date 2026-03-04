@@ -1,10 +1,11 @@
 using Catalog.Application.ReadModels;
 using Catalog.Domain.Entities;
 using Catalog.Infrastructure.Persistence;
+using Catalog.Infrastructure.Persistence.Elasticsearch;
+using Elastic.Clients.Elasticsearch;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using MongoDB.Driver;
 
 namespace Catalog.Infrastructure.Seeding;
 
@@ -15,19 +16,20 @@ internal sealed class CatalogDataSeeder(
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         using var scope = scopeFactory.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
+        var esClient = scope.ServiceProvider.GetRequiredService<ElasticsearchClient>();
 
-        var count = await dbContext.ProductViews.CountDocumentsAsync(
-            Builders<ProductReadModel>.Filter.Empty,
-            cancellationToken: cancellationToken);
+        var countResponse = await esClient.CountAsync<ProductReadModel>(
+            CatalogIndexMapping.IndexName, cancellationToken);
 
-        if (count > 0)
+        if (countResponse.IsValidResponse && countResponse.Count > 0)
         {
-            logger.LogInformation("Catalog already seeded with {Count} products. Skipping.", count);
+            logger.LogInformation("Catalog already seeded with {Count} products. Skipping.", countResponse.Count);
             return;
         }
 
         logger.LogInformation("Seeding catalog with sample data...");
+
+        var dbContext = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
 
         var seeds = new[]
         {
@@ -86,7 +88,10 @@ internal sealed class CatalogDataSeeder(
             };
 
             await dbContext.Products.InsertOneAsync(doc, cancellationToken: cancellationToken);
-            await dbContext.ProductViews.InsertOneAsync(readModel, cancellationToken: cancellationToken);
+            await esClient.IndexAsync(
+                readModel,
+                r => r.Index(CatalogIndexMapping.IndexName).Id(readModel.Id.ToString()),
+                cancellationToken);
         }
 
         logger.LogInformation("Catalog seeded with {Count} products.", seeds.Length);
