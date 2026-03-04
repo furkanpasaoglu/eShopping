@@ -6,9 +6,13 @@ var keycloak = builder.AddKeycloak("keycloak", port: 8080)
 var mongo = builder.AddMongoDB("mongo");
 var catalogDb = mongo.AddDatabase("catalog-db");
 
+var elasticsearch = builder.AddElasticsearch("elasticsearch");
+
 var catalogApi = builder.AddProject<Projects.Catalog_API>("catalog-api")
     .WithReference(catalogDb)
-    .WaitFor(catalogDb);
+    .WithReference(elasticsearch)
+    .WaitFor(catalogDb)
+    .WaitFor(elasticsearch);
 var basketApi = builder.AddProject<Projects.Basket_API>("basket-api");
 var paymentApi = builder.AddProject<Projects.Payment_API>("payment-api");
 var notificationWorker = builder.AddProject<Projects.Notification_Worker>("notification-worker");
