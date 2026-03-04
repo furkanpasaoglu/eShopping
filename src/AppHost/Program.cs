@@ -1,15 +1,18 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
 var keycloak = builder.AddKeycloak("keycloak", port: 8080)
-    .WithRealmImport("./keycloak/eshopping-realm.json");
+    .WithRealmImport("./keycloak/eshopping-realm.json")
+    .WithDeveloperCertificateTrust(true);
 
 var mongo = builder.AddMongoDB("mongo");
 var catalogDb = mongo.AddDatabase("catalog-db");
 
-var elasticsearch = builder.AddElasticsearch("elasticsearch");
+var elasticsearch = builder.AddElasticsearch("elasticsearch")
+    .WithEnvironment("discovery.type", "single-node")
+    .WithEnvironment("xpack.security.enabled", "false");
 
 builder.AddContainer("kibana", "docker.elastic.co/kibana/kibana", "8.17.0")
-    .WithHttpEndpoint(targetPort: 5601, name: "ui")
+    .WithHttpEndpoint(port: 5601, targetPort: 5601, name: "ui")
     .WithEnvironment("ELASTICSEARCH_HOSTS", "http://elasticsearch:9200")
     .WaitFor(elasticsearch);
 
