@@ -13,14 +13,21 @@ builder.AddServiceDefaults();
 builder.Services.AddOpenApi();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddKeycloakJwtBearer(
-        serviceName: "keycloak",
-        realm: "eshopping",
-        options =>
+    .AddJwtBearer(options =>
+    {
+        var baseUrl = builder.Configuration["services:keycloak:http:0"]
+                   ?? builder.Configuration["Keycloak:auth-server-url"]
+                   ?? "http://localhost:8080";
+        var realm = builder.Configuration["Keycloak:realm"] ?? "eshopping";
+        options.Authority = $"{baseUrl}/realms/{realm}";
+        options.RequireHttpsMetadata = false;
+        options.TokenValidationParameters.ValidateAudience = false;
+        options.BackchannelHttpHandler = new HttpClientHandler
         {
-            options.RequireHttpsMetadata = false;
-            options.TokenValidationParameters.ValidateAudience = false;
-        });
+            ServerCertificateCustomValidationCallback =
+                HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+        };
+    });
 
 builder.Services.AddAuthorizationBuilder()
     .SetDefaultPolicy(new AuthorizationPolicyBuilder()
