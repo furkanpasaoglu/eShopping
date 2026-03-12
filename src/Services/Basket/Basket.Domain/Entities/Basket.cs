@@ -8,6 +8,9 @@ namespace Basket.Domain.Entities;
 
 public sealed class Basket : AggregateRoot<BasketId>
 {
+    public const int MaxItemsPerBasket = 50;
+    public const int MaxQuantityPerItem = 99;
+
     private readonly List<BasketItem> _items = [];
 
     private Basket(BasketId id) : base(id) { }
@@ -31,10 +34,20 @@ public sealed class Basket : AggregateRoot<BasketId>
         string productName,
         decimal unitPrice,
         string currency,
-        int quantity)
+        int quantity,
+        int availableStock)
     {
         if (quantity <= 0)
             return BasketErrors.InvalidQuantity;
+
+        if (quantity > MaxQuantityPerItem)
+            return BasketErrors.InsufficientStock(MaxQuantityPerItem);
+
+        if (availableStock == 0)
+            return BasketErrors.OutOfStock;
+
+        if (quantity > availableStock)
+            return BasketErrors.InsufficientStock(availableStock);
 
         var existing = _items.FirstOrDefault(i => i.ProductId == productId);
 
@@ -45,6 +58,12 @@ public sealed class Basket : AggregateRoot<BasketId>
         }
         else
         {
+            if (_items.Count >= MaxItemsPerBasket)
+                return BasketErrors.BasketFull;
+
+            if (_items.Count > 0 && _items[0].Currency != currency)
+                return BasketErrors.CurrencyMismatch;
+
             _items.Add(new BasketItem(productId, productName, unitPrice, currency, quantity));
         }
 

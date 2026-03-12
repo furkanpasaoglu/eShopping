@@ -14,6 +14,8 @@ internal sealed class UpsertBasketItemCommandValidator : AbstractValidator<Upser
             .NotEmpty();
 
         RuleFor(x => x.Quantity)
-            .GreaterThan(0).WithMessage("Quantity must be greater than zero.");
+            .GreaterThan(0).WithMessage("Quantity must be greater than zero.")
+            .LessThanOrEqualTo(Basket.Domain.Entities.Basket.MaxQuantityPerItem)
+            .WithMessage($"Quantity cannot exceed {Basket.Domain.Entities.Basket.MaxQuantityPerItem} units per item.");
     }
 }

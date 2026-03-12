@@ -9,14 +9,23 @@ namespace Basket.Application.Commands.UpsertBasketItem;
 
 internal sealed class UpsertBasketItemCommandHandler(
     IBasketRepository basketRepository,
-    ICatalogGrpcClient catalogGrpcClient)
+    ICatalogClient catalogClient)
     : ICommandHandler<UpsertBasketItemCommand, BasketResponse>
 {
     public async Task<Result<BasketResponse>> Handle(
         UpsertBasketItemCommand request,
         CancellationToken cancellationToken)
     {
-        var snapshot = await catalogGrpcClient.GetProductSnapshotAsync(request.ProductId, cancellationToken);
+        ProductSnapshot? snapshot;
+
+        try
+        {
+            snapshot = await catalogClient.GetProductSnapshotAsync(request.ProductId, cancellationToken);
+        }
+        catch (CatalogServiceUnavailableException)
+        {
+            return BasketErrors.CatalogUnavailable;
+        }
 
         if (snapshot is null)
             return BasketErrors.ProductNotFound;
@@ -29,7 +38,8 @@ internal sealed class UpsertBasketItemCommandHandler(
             snapshot.Name,
             snapshot.Price,
             snapshot.Currency,
-            request.Quantity);
+            request.Quantity,
+            snapshot.Stock);
 
         if (result.IsFailure)
             return result.Error;

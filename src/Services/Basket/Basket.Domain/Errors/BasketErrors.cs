@@ -19,4 +19,19 @@ public static class BasketErrors
     public static readonly Error CatalogUnavailable =
         Error.Failure("Basket.CatalogUnavailable",
             "Unable to validate product — catalog service is unreachable.");
+
+    public static readonly Error OutOfStock =
+        Error.Validation("Basket.OutOfStock", "This product is currently out of stock.");
+
+    public static Error InsufficientStock(int available) =>
+        Error.Validation("Basket.InsufficientStock",
+            $"Requested quantity exceeds available stock ({available} unit(s) remaining).");
+
+    public static readonly Error BasketFull =
+        Error.Validation("Basket.BasketFull",
+            "Basket cannot exceed 50 distinct products.");
+
+    public static readonly Error CurrencyMismatch =
+        Error.Validation("Basket.CurrencyMismatch",
+            "All items in a basket must share the same currency.");
 }

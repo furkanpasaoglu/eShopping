@@ -1,10 +1,9 @@
 using Basket.Application.Abstractions;
-using Basket.Infrastructure.Grpc;
 using Basket.Infrastructure.Persistence;
+using Basket.Infrastructure.Rest;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Shared.Grpc.Catalog;
 
 namespace Basket.Infrastructure;
 
@@ -19,12 +18,12 @@ public static class DependencyInjection
         builder.Services.Configure<BasketOptions>(
             configuration.GetSection(BasketOptions.SectionName));
 
-        builder.Services.AddGrpcClient<CatalogGrpcService.CatalogGrpcServiceClient>(o =>
-            o.Address = new Uri("https+http2://catalog-api"))
+        builder.Services.AddHttpClient<ICatalogClient, CatalogRestClient>(client =>
+            client.BaseAddress = new Uri("http://catalog-api"))
+            .AddServiceDiscovery()
             .AddStandardResilienceHandler();
 
         builder.Services.AddScoped<IBasketRepository, BasketRedisRepository>();
-        builder.Services.AddScoped<ICatalogGrpcClient, CatalogGrpcClient>();
 
         return builder;
     }
