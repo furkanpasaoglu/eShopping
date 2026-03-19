@@ -2,23 +2,132 @@
   "info": {
     "name": "eShopping Platform",
     "_postman_id": "eshopping-platform-collection",
-    "description": "All services. Set base URL variables from the Aspire dashboard (http://localhost:18888) before running.\n\nAuth: Services accept X-User-Id and X-User-Roles headers directly (simulating what the Gateway injects after JWT validation). No Keycloak token needed for direct service calls.\n\nRecommended test flow:\n1. Create a product (Catalog)\n2. Set stock for it (Stock)\n3. Add it to basket (Basket)\n4. Place an order (Order)",
+    "description": "All services + Keycloak auth.\n\n---\n\n**Ports:** Update URL variables from the Aspire dashboard (http://localhost:18888). Keycloak is always at http://localhost:8080.\n\n---\n\n**Two ways to test:**\n\n1. DIRECT (bypass Gateway) — add X-User-Id and X-User-Roles headers manually. No token needed.\n2. VIA GATEWAY — get a token from Keycloak first, then call {{gateway_url}}/api/v1/... with Authorization: Bearer {{access_token}}.\n\n---\n\n**Test users:**\n- admin / Admin1234! → roles: Admin, Customer\n- customer / Customer1234! → roles: Customer\n\n---\n\n**Recommended test flow:**\n1. Get token (Keycloak)\n2. Create a product (Catalog — Admin)\n3. Set stock for it (Stock)\n4. Add it to basket (Basket)\n5. Place an order (Order) → saga triggers: stock decreases, payment reserved, order confirmed",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "catalog_url", "value": "http://localhost:5273", "description": "Update from Aspire dashboard" },
-    { "key": "basket_url",  "value": "http://localhost:5136", "description": "Update from Aspire dashboard" },
-    { "key": "order_url",   "value": "http://localhost:5074", "description": "Update from Aspire dashboard" },
-    { "key": "stock_url",   "value": "http://localhost:5165", "description": "Update from Aspire dashboard" },
-    { "key": "user_id",     "value": "00000000-0000-0000-0000-000000000001", "description": "Test customer user ID" },
-    { "key": "username",    "value": "testuser", "description": "Test username for basket" },
-    { "key": "product_id",  "value": "", "description": "Filled after Create Product" },
-    { "key": "order_id",    "value": "", "description": "Filled after Place Order" },
-    { "key": "payment_url", "value": "http://localhost:5100", "description": "Update from Aspire dashboard" }
+    { "key": "keycloak_url", "value": "http://localhost:8080", "description": "Keycloak — fixed port 8080" },
+    { "key": "gateway_url",  "value": "http://localhost:5000", "description": "Gateway — update from Aspire dashboard" },
+    { "key": "catalog_url",  "value": "http://localhost:5273", "description": "Direct — update from Aspire dashboard" },
+    { "key": "basket_url",   "value": "http://localhost:5136", "description": "Direct — update from Aspire dashboard" },
+    { "key": "order_url",    "value": "http://localhost:5074", "description": "Direct — update from Aspire dashboard" },
+    { "key": "stock_url",    "value": "http://localhost:5165", "description": "Direct — update from Aspire dashboard" },
+    { "key": "payment_url",  "value": "http://localhost:5100", "description": "Direct — update from Aspire dashboard" },
+    { "key": "user_id",      "value": "00000000-0000-0000-0000-000000000001", "description": "Test customer user ID (for direct calls)" },
+    { "key": "username",     "value": "testuser", "description": "Test username for basket" },
+    { "key": "access_token", "value": "", "description": "Filled after Keycloak token request" },
+    { "key": "product_id",   "value": "", "description": "Filled after Create Product" },
+    { "key": "order_id",     "value": "", "description": "Filled after Place Order" }
   ],
   "item": [
     {
+      "name": "Keycloak",
+      "description": "Get JWT tokens for Gateway-authenticated requests. Tokens are stored in {{access_token}} and used automatically.",
+      "item": [
+        {
+          "name": "Get Token — admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const token = pm.response.json().access_token;",
+                  "    pm.collectionVariables.set('access_token', token);",
+                  "    pm.collectionVariables.set('user_id', '00000000-0000-0000-0000-000000000001');",
+                  "    console.log('access_token set for admin');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "grant_type", "value": "password" },
+                { "key": "client_id",  "value": "eshopping-client" },
+                { "key": "username",   "value": "admin" },
+                { "key": "password",   "value": "Admin1234!" }
+              ]
+            },
+            "url": {
+              "raw": "{{keycloak_url}}/realms/eshopping/protocol/openid-connect/token",
+              "host": ["{{keycloak_url}}"],
+              "path": ["realms", "eshopping", "protocol", "openid-connect", "token"]
+            }
+          }
+        },
+        {
+          "name": "Get Token — customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const token = pm.response.json().access_token;",
+                  "    pm.collectionVariables.set('access_token', token);",
+                  "    pm.collectionVariables.set('user_id', '00000000-0000-0000-0000-000000000002');",
+                  "    console.log('access_token set for customer');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "grant_type", "value": "password" },
+                { "key": "client_id",  "value": "eshopping-client" },
+                { "key": "username",   "value": "customer" },
+                { "key": "password",   "value": "Customer1234!" }
+              ]
+            },
+            "url": {
+              "raw": "{{keycloak_url}}/realms/eshopping/protocol/openid-connect/token",
+              "host": ["{{keycloak_url}}"],
+              "path": ["realms", "eshopping", "protocol", "openid-connect", "token"]
+            }
+          }
+        },
+        {
+          "name": "Introspect Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "client_id", "value": "eshopping-client" },
+                { "key": "token",     "value": "{{access_token}}" }
+              ]
+            },
+            "url": {
+              "raw": "{{keycloak_url}}/realms/eshopping/protocol/openid-connect/token/introspect",
+              "host": ["{{keycloak_url}}"],
+              "path": ["realms", "eshopping", "protocol", "openid-connect", "token", "introspect"]
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "Catalog",
+      "description": "Direct calls to Catalog service. Use X-User-Id / X-User-Roles headers.",
       "item": [
         {
           "name": "Get Products",
@@ -30,8 +139,8 @@
               "host": ["{{catalog_url}}"],
               "path": ["api", "v1", "catalog", "products"],
               "query": [
-                { "key": "search", "value": "", "disabled": true },
-                { "key": "page", "value": "1", "disabled": true },
+                { "key": "search",   "value": "",   "disabled": true },
+                { "key": "page",     "value": "1",  "disabled": true },
                 { "key": "pageSize", "value": "10", "disabled": true }
               ]
             }
@@ -69,7 +178,7 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "X-User-Id", "value": "{{user_id}}" },
+              { "key": "X-User-Id",    "value": "{{user_id}}" },
               { "key": "X-User-Roles", "value": "Admin" },
               { "key": "Content-Type", "value": "application/json" }
             ],
@@ -89,7 +198,7 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "X-User-Id", "value": "{{user_id}}" },
+              { "key": "X-User-Id",    "value": "{{user_id}}" },
               { "key": "X-User-Roles", "value": "Admin" },
               { "key": "Content-Type", "value": "application/json" }
             ],
@@ -109,7 +218,7 @@
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "X-User-Id", "value": "{{user_id}}" },
+              { "key": "X-User-Id",    "value": "{{user_id}}" },
               { "key": "X-User-Roles", "value": "Admin" },
               { "key": "Content-Type", "value": "application/json" }
             ],
@@ -129,7 +238,7 @@
           "request": {
             "method": "DELETE",
             "header": [
-              { "key": "X-User-Id", "value": "{{user_id}}" },
+              { "key": "X-User-Id",    "value": "{{user_id}}" },
               { "key": "X-User-Roles", "value": "Admin" }
             ],
             "url": {
@@ -143,6 +252,7 @@
     },
     {
       "name": "Stock",
+      "description": "Direct calls to Stock service. Internal-only — no auth headers required.",
       "item": [
         {
           "name": "Get Stock by Product ID",
@@ -178,13 +288,14 @@
     },
     {
       "name": "Basket",
+      "description": "Direct calls to Basket service.",
       "item": [
         {
           "name": "Get Basket",
           "request": {
             "method": "GET",
             "header": [
-              { "key": "X-User-Id", "value": "{{user_id}}" },
+              { "key": "X-User-Id",    "value": "{{user_id}}" },
               { "key": "X-User-Roles", "value": "Customer" }
             ],
             "url": {
@@ -199,7 +310,7 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "X-User-Id", "value": "{{user_id}}" },
+              { "key": "X-User-Id",    "value": "{{user_id}}" },
               { "key": "X-User-Roles", "value": "Customer" },
               { "key": "Content-Type", "value": "application/json" }
             ],
@@ -219,7 +330,7 @@
           "request": {
             "method": "DELETE",
             "header": [
-              { "key": "X-User-Id", "value": "{{user_id}}" },
+              { "key": "X-User-Id",    "value": "{{user_id}}" },
               { "key": "X-User-Roles", "value": "Customer" }
             ],
             "url": {
@@ -234,7 +345,7 @@
           "request": {
             "method": "DELETE",
             "header": [
-              { "key": "X-User-Id", "value": "{{user_id}}" },
+              { "key": "X-User-Id",    "value": "{{user_id}}" },
               { "key": "X-User-Roles", "value": "Customer" }
             ],
             "url": {
@@ -248,6 +359,7 @@
     },
     {
       "name": "Payment",
+      "description": "Direct calls to Payment service (mock). Internal-only — no auth headers required.",
       "item": [
         {
           "name": "Reserve Payment",
@@ -271,6 +383,7 @@
     },
     {
       "name": "Order",
+      "description": "Direct calls to Order service. Placing an order triggers the saga: stock is reserved → payment called → order confirmed/cancelled.",
       "item": [
         {
           "name": "Place Order",
@@ -283,6 +396,7 @@
                   "    const body = pm.response.json();",
                   "    pm.collectionVariables.set('order_id', body.id);",
                   "    console.log('order_id set to: ' + body.id);",
+                  "    console.log('Order status: ' + body.status + ' (saga will update it to Confirmed shortly)');",
                   "}"
                 ],
                 "type": "text/javascript"
@@ -292,7 +406,7 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "X-User-Id", "value": "{{user_id}}" },
+              { "key": "X-User-Id",    "value": "{{user_id}}" },
               { "key": "X-User-Roles", "value": "Customer" },
               { "key": "Content-Type", "value": "application/json" }
             ],
@@ -312,7 +426,7 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "X-User-Id", "value": "{{user_id}}" },
+              { "key": "X-User-Id",    "value": "{{user_id}}" },
               { "key": "X-User-Roles", "value": "Customer" }
             ],
             "url": {
@@ -327,7 +441,7 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "X-User-Id", "value": "{{user_id}}" },
+              { "key": "X-User-Id",    "value": "{{user_id}}" },
               { "key": "X-User-Roles", "value": "Customer" }
             ],
             "url": {
@@ -342,13 +456,129 @@
           "request": {
             "method": "DELETE",
             "header": [
-              { "key": "X-User-Id", "value": "{{user_id}}" },
+              { "key": "X-User-Id",    "value": "{{user_id}}" },
               { "key": "X-User-Roles", "value": "Customer" }
             ],
             "url": {
               "raw": "{{order_url}}/api/v1/orders/{{order_id}}",
               "host": ["{{order_url}}"],
               "path": ["api", "v1", "orders", "{{order_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Gateway (via Keycloak token)",
+      "description": "Calls routed through the API Gateway. Requires a valid Keycloak token in {{access_token}}.\n\nRun 'Get Token' from the Keycloak folder first.\n\nGateway URL: {{gateway_url}} — update from Aspire dashboard.",
+      "item": [
+        {
+          "name": "Get Products [Gateway]",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/api/v1/catalog/products",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "v1", "catalog", "products"]
+            }
+          }
+        },
+        {
+          "name": "Create Product [Gateway — Admin token required]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const id = pm.response.json();",
+                  "    pm.collectionVariables.set('product_id', id);",
+                  "    console.log('product_id set to: ' + id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Wireless Headphones Pro\",\n  \"category\": \"Electronics\",\n  \"price\": 149.99,\n  \"currency\": \"USD\",\n  \"stock\": 100,\n  \"description\": \"Premium noise-cancelling wireless headphones\",\n  \"imageUrl\": \"https://example.com/headphones.jpg\"\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/v1/catalog/products",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "v1", "catalog", "products"]
+            }
+          }
+        },
+        {
+          "name": "Place Order [Gateway — Customer token required]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const body = pm.response.json();",
+                  "    pm.collectionVariables.set('order_id', body.id);",
+                  "    console.log('order_id set to: ' + body.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"street\": \"123 Main Street\",\n  \"city\": \"Istanbul\",\n  \"state\": \"Istanbul\",\n  \"country\": \"Turkey\",\n  \"zipCode\": \"34000\",\n  \"items\": [\n    {\n      \"productId\": \"{{product_id}}\",\n      \"productName\": \"Wireless Headphones Pro\",\n      \"unitPrice\": 149.99,\n      \"quantity\": 2\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/v1/orders",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "v1", "orders"]
+            }
+          }
+        },
+        {
+          "name": "Get My Orders [Gateway]",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/api/v1/orders",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "v1", "orders"]
+            }
+          }
+        },
+        {
+          "name": "Get Basket [Gateway]",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/api/v1/basket/{{username}}",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "v1", "basket", "{{username}}"]
             }
           }
         }
