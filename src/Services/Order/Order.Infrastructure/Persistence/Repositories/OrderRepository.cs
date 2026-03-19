@@ -1,14 +1,18 @@
 using Microsoft.EntityFrameworkCore;
 using Order.Application.Abstractions;
+using Order.Domain.ValueObjects;
 
 namespace Order.Infrastructure.Persistence.Repositories;
 
 internal sealed class OrderRepository(OrderDbContext dbContext) : IOrderRepository
 {
-    public Task<Order.Domain.Entities.Order?> GetByIdAsync(Guid id, CancellationToken ct = default) =>
-        dbContext.Orders
+    public Task<Order.Domain.Entities.Order?> GetByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        var orderId = OrderId.From(id);
+        return dbContext.Orders
             .Include(o => o.Items)
-            .FirstOrDefaultAsync(o => o.Id.Value == id, ct);
+            .FirstOrDefaultAsync(o => o.Id == orderId, ct);
+    }
 
     public async Task<IReadOnlyList<Order.Domain.Entities.Order>> GetByCustomerIdAsync(
         Guid customerId,
