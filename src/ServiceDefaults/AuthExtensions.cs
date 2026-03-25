@@ -42,6 +42,7 @@ public static class AuthExtensions
 public interface ICurrentUser
 {
     Guid? UserId { get; }
+    string? Username { get; }
     bool IsAuthenticated { get; }
     string[] Roles { get; }
     bool IsInRole(string role);
@@ -61,6 +62,8 @@ internal sealed class CurrentUser(IHttpContextAccessor httpContextAccessor) : IC
             return Guid.TryParse(value, out var id) ? id : null;
         }
     }
+
+    public string? Username => User?.FindFirstValue(ClaimTypes.Name);
 
     public string[] Roles =>
         User?.FindAll(ClaimTypes.Role).Select(c => c.Value).ToArray() ?? [];

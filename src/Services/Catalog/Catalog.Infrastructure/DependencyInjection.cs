@@ -1,10 +1,12 @@
 using Catalog.Application.Abstractions;
+using Catalog.Infrastructure.Consumers;
 using Catalog.Infrastructure.Persistence;
 using Catalog.Infrastructure.Persistence.Elasticsearch;
 using Catalog.Infrastructure.Persistence.Indexes;
 using Catalog.Infrastructure.Persistence.Repositories;
 using Catalog.Infrastructure.Seeding;
 using Elastic.Clients.Elasticsearch;
+using MassTransit;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using MongoDB.Driver;
@@ -40,6 +42,17 @@ public static class DependencyInjection
 
         services.AddHostedService<CatalogElasticsearchInitializer>();
         services.AddHostedService<CatalogDataSeeder>();
+
+        services.AddMassTransit(x =>
+        {
+            x.AddConsumer<StockUpdatedConsumer>();
+
+            x.UsingRabbitMq((ctx, cfg) =>
+            {
+                cfg.Host(configuration.GetConnectionString("rabbitmq"));
+                cfg.ConfigureEndpoints(ctx);
+            });
+        });
 
         return services;
     }

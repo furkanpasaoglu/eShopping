@@ -61,6 +61,7 @@ builder.Services.AddReverseProxy()
         ctx.AddRequestTransform(async transformCtx =>
         {
             transformCtx.ProxyRequest.Headers.Remove("X-User-Id");
+            transformCtx.ProxyRequest.Headers.Remove("X-User-Name");
             transformCtx.ProxyRequest.Headers.Remove("X-User-Roles");
 
             var user = transformCtx.HttpContext.User;
@@ -73,6 +74,13 @@ builder.Services.AddReverseProxy()
                 {
                     transformCtx.ProxyRequest.Headers
                         .TryAddWithoutValidation("X-User-Id", userId);
+                }
+
+                var username = user.FindFirst("preferred_username")?.Value;
+                if (!string.IsNullOrWhiteSpace(username))
+                {
+                    transformCtx.ProxyRequest.Headers
+                        .TryAddWithoutValidation("X-User-Name", username);
                 }
 
                 var roles = user.FindAll(ClaimTypes.Role)

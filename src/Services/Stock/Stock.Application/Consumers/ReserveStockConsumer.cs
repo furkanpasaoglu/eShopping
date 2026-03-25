@@ -4,6 +4,7 @@ using Shared.Contracts.Commands.Stock;
 using Shared.Contracts.Events.Stock;
 using Stock.Application.Abstractions;
 
+
 namespace Stock.Application.Consumers;
 
 public sealed class ReserveStockConsumer(
@@ -50,6 +51,11 @@ public sealed class ReserveStockConsumer(
         logger.LogInformation("Stock reserved for order {OrderId} — {Count} item(s)", command.OrderId, reservedItems.Count);
 
         await publishEndpoint.Publish(new StockReservedEvent(command.OrderId), context.CancellationToken);
+
+        await publishEndpoint.Publish(
+            new StockUpdatedIntegrationEvent(
+                reservedItems.Select(i => new StockUpdateItem(i.ProductId, -i.Quantity)).ToList()),
+            context.CancellationToken);
     }
 
     private async Task RollbackAndFail(

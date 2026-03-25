@@ -5,6 +5,7 @@ namespace Shared.Contracts.Events.Orders;
 public sealed record OrderPlacedIntegrationEvent(
     Guid OrderId,
     Guid CustomerId,
+    string Username,
     IReadOnlyList<OrderItemDto> Items,
     decimal TotalAmount,
     DateTimeOffset PlacedAt) : IntegrationEvent;

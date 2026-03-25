@@ -16,12 +16,6 @@ builder.AddContainer("kibana", "docker.elastic.co/kibana/kibana", "8.17.0")
     .WithEnvironment("ELASTICSEARCH_HOSTS", "http://elasticsearch:9200")
     .WaitFor(elasticsearch);
 
-var catalogApi = builder.AddProject<Projects.Catalog_API>("catalog-api")
-    .WithReference(catalogDb)
-    .WithReference(elasticsearch)
-    .WaitFor(catalogDb)
-    .WaitFor(elasticsearch);
-
 var redis = builder.AddRedis("redis");
 
 var postgres = builder.AddPostgres("postgres");
@@ -29,6 +23,14 @@ var stockDb = postgres.AddDatabase("stock-db");
 var orderDb = postgres.AddDatabase("order-db");
 
 var rabbit = builder.AddRabbitMQ("rabbitmq");
+
+var catalogApi = builder.AddProject<Projects.Catalog_API>("catalog-api")
+    .WithReference(catalogDb)
+    .WithReference(elasticsearch)
+    .WithReference(rabbit)
+    .WaitFor(catalogDb)
+    .WaitFor(elasticsearch)
+    .WaitFor(rabbit);
 
 var stockApi = builder.AddProject<Projects.Stock_API>("stock-api")
     .WithReference(stockDb)
@@ -38,13 +40,19 @@ var stockApi = builder.AddProject<Projects.Stock_API>("stock-api")
 
 var basketApi = builder.AddProject<Projects.Basket_API>("basket-api")
     .WithReference(redis)
+    .WithReference(rabbit)
     .WithReference(catalogApi)
     .WithReference(stockApi)
     .WaitFor(redis)
+    .WaitFor(rabbit)
     .WaitFor(catalogApi)
     .WaitFor(stockApi);
 
-var paymentApi = builder.AddProject<Projects.Payment_API>("payment-api");
+var paymentDb = postgres.AddDatabase("payment-db");
+
+var paymentApi = builder.AddProject<Projects.Payment_API>("payment-api")
+    .WithReference(paymentDb)
+    .WaitFor(paymentDb);
 var notificationWorker = builder.AddProject<Projects.Notification_Worker>("notification-worker");
 
 var orderApi = builder.AddProject<Projects.Order_API>("order-api")

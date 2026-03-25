@@ -1,12 +1,14 @@
 using MassTransit;
 using Microsoft.Extensions.Logging;
 using Shared.Contracts.Commands.Stock;
+using Shared.Contracts.Events.Stock;
 using Stock.Application.Abstractions;
 
 namespace Stock.Application.Consumers;
 
 public sealed class ReleaseStockConsumer(
     IStockRepository stockRepository,
+    IPublishEndpoint publishEndpoint,
     ILogger<ReleaseStockConsumer> logger) : IConsumer<ReleaseStockCommand>
 {
     public async Task Consume(ConsumeContext<ReleaseStockCommand> context)
@@ -22,5 +24,10 @@ public sealed class ReleaseStockConsumer(
         await stockRepository.SaveChangesAsync(context.CancellationToken);
 
         logger.LogInformation("Stock released for order {OrderId}", command.OrderId);
+
+        await publishEndpoint.Publish(
+            new StockUpdatedIntegrationEvent(
+                command.Items.Select(i => new StockUpdateItem(i.ProductId, i.Quantity)).ToList()),
+            context.CancellationToken);
     }
 }
