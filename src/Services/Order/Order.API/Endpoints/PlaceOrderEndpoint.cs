@@ -27,6 +27,7 @@ internal static class PlaceOrderEndpoint
     {
         var command = new PlaceOrderCommand(
             currentUser.UserId!.Value,
+            currentUser.Username ?? currentUser.UserId.Value.ToString(),
             request.Street,
             request.City,
             request.State,

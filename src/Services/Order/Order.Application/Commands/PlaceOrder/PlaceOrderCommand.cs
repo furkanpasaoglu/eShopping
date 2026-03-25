@@ -5,6 +5,7 @@ namespace Order.Application.Commands.PlaceOrder;
 
 public sealed record PlaceOrderCommand(
     Guid CustomerId,
+    string Username,
     string Street,
     string City,
     string State,

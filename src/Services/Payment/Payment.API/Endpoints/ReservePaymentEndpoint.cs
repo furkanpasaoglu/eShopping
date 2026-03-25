@@ -1,3 +1,7 @@
+using MediatR;
+using Payment.Application.Commands.ReservePayment;
+using Shared.BuildingBlocks.Extensions;
+
 namespace Payment.API.Endpoints;
 
 internal static class ReservePaymentEndpoint
@@ -10,19 +14,30 @@ internal static class ReservePaymentEndpoint
             .Produces<ReservePaymentResponse>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status402PaymentRequired);
 
-    private static IResult Handle(ReservePaymentRequest request)
+    private static async Task<IResult> Handle(
+        ReservePaymentRequest request,
+        ISender sender,
+        CancellationToken ct)
     {
-        if (request.Amount <= 0)
+        var command = new ReservePaymentCommand(
+            request.OrderId,
+            request.CustomerId,
+            request.Amount,
+            request.Currency);
+
+        var result = await sender.Send(command, ct);
+
+        if (result.IsFailure)
             return Results.Problem(
-                title: "Invalid amount",
-                detail: "Payment amount must be greater than zero.",
+                title: "Payment declined",
+                detail: result.Error.Description,
                 statusCode: StatusCodes.Status402PaymentRequired);
 
         return Results.Ok(new ReservePaymentResponse(
-            ReservationId: Guid.NewGuid(),
-            OrderId: request.OrderId,
-            Status: "Reserved",
-            ReservedAt: DateTimeOffset.UtcNow));
+            ReservationId: result.Value.Id,
+            OrderId: result.Value.OrderId,
+            Status: result.Value.Status,
+            ReservedAt: result.Value.ReservedAt));
     }
 }
 

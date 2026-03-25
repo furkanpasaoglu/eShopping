@@ -1,5 +1,7 @@
 using Asp.Versioning;
 using Payment.API.Endpoints;
+using Payment.Application;
+using Payment.Infrastructure;
 using Scalar.AspNetCore;
 using ServiceDefaults;
 
@@ -8,8 +10,11 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 builder.Services.AddServiceOpenApi(
     "Payment API",
-    "Payment processing service. Handles payment reservations for order processing. Internal service consumed by order saga orchestration.");
+    "Payment processing service. Handles payment reservations, captures, and refunds for order processing.");
 builder.Services.AddServiceApiVersioning();
+
+builder.Services.AddApplication();
+builder.AddInfrastructure();
 
 var app = builder.Build();
 

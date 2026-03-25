@@ -19,6 +19,7 @@ public sealed class GatewayAuthenticationHandler : AuthenticationHandler<Gateway
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
         var userId = Request.Headers["X-User-Id"].FirstOrDefault();
+        var username = Request.Headers["X-User-Name"].FirstOrDefault();
         var rolesHeader = Request.Headers["X-User-Roles"].FirstOrDefault();
 
         if (string.IsNullOrWhiteSpace(userId))
@@ -30,6 +31,11 @@ public sealed class GatewayAuthenticationHandler : AuthenticationHandler<Gateway
         {
             new(ClaimTypes.NameIdentifier, userId)
         };
+
+        if (!string.IsNullOrWhiteSpace(username))
+        {
+            claims.Add(new Claim(ClaimTypes.Name, username));
+        }
 
         if (!string.IsNullOrWhiteSpace(rolesHeader))
         {

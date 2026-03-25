@@ -1,6 +1,8 @@
 using Basket.Application.Abstractions;
+using Basket.Infrastructure.Consumers;
 using Basket.Infrastructure.Persistence;
 using Basket.Infrastructure.Rest;
+using MassTransit;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -25,6 +27,17 @@ public static class DependencyInjection
             client.BaseAddress = new Uri("http://stock-api"));
 
         builder.Services.AddScoped<IBasketRepository, BasketRedisRepository>();
+
+        builder.Services.AddMassTransit(x =>
+        {
+            x.AddConsumer<ClearBasketOnOrderPlacedConsumer>();
+
+            x.UsingRabbitMq((ctx, cfg) =>
+            {
+                cfg.Host(configuration.GetConnectionString("rabbitmq"));
+                cfg.ConfigureEndpoints(ctx);
+            });
+        });
 
         return builder;
     }

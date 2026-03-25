@@ -6,6 +6,7 @@ using Elastic.Clients.Elasticsearch;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Shared.Contracts.Seeding;
 
 namespace Catalog.Infrastructure.Seeding;
 
@@ -30,27 +31,18 @@ internal sealed class CatalogDataSeeder(
         logger.LogInformation("Seeding catalog with sample data...");
 
         var dbContext = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
+        var now = DateTime.UtcNow;
 
-        var seeds = new[]
+        foreach (var seed in SeedProductCatalog.Products)
         {
-            ("Laptop Pro 15", "Electronics", 1299.99m, "USD", 50, "High-performance laptop with 15\" display", null as string),
-            ("Wireless Mouse", "Electronics", 29.99m, "USD", 200, "Ergonomic wireless mouse with long battery life", null),
-            ("Mechanical Keyboard", "Electronics", 89.99m, "USD", 150, "Tactile mechanical keyboard with RGB backlight", null),
-            ("USB-C Hub", "Electronics", 49.99m, "USD", 300, "7-in-1 USB-C hub with HDMI and USB 3.0 ports", null),
-            ("Running Shoes", "Footwear", 119.99m, "USD", 80, "Lightweight running shoes with cushioned sole", null),
-            ("Yoga Mat", "Sports", 35.99m, "USD", 120, "Non-slip 6mm yoga mat with carrying strap", null),
-            ("Water Bottle", "Sports", 24.99m, "USD", 500, "1L stainless steel insulated water bottle", null),
-            ("Backpack 30L", "Accessories", 79.99m, "USD", 60, "Durable 30L backpack with laptop compartment", null),
-            ("Desk Lamp", "Home", 39.99m, "USD", 90, "LED desk lamp with adjustable brightness and color temp", null),
-            ("Notebook Set", "Stationery", 14.99m, "USD", 400, "Set of 3 ruled notebooks, A5 size", null)
-        };
+            var result = Product.Reconstitute(
+                seed.ProductId, seed.Name, seed.Price, seed.Currency,
+                seed.Category, seed.Stock, seed.Description, seed.ImageUrl,
+                now, updatedAt: null, isDeleted: false, deletedAt: null);
 
-        foreach (var (name, category, price, currency, stock, description, imageUrl) in seeds)
-        {
-            var result = Product.Create(name, price, currency, category, stock, description, imageUrl);
             if (result.IsFailure)
             {
-                logger.LogWarning("Failed to create seed product {Name}: {Error}", name, result.Error);
+                logger.LogWarning("Failed to create seed product {Name}: {Error}", seed.Name, result.Error);
                 continue;
             }
 
@@ -94,7 +86,7 @@ internal sealed class CatalogDataSeeder(
                 cancellationToken);
         }
 
-        logger.LogInformation("Catalog seeded with {Count} products.", seeds.Length);
+        logger.LogInformation("Catalog seeded with {Count} products.", SeedProductCatalog.Products.Count);
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;

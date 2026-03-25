@@ -37,6 +37,7 @@ internal sealed class PlaceOrderCommandHandler(
             new OrderPlacedIntegrationEvent(
                 result.Value.Id.Value,
                 request.CustomerId,
+                request.Username,
                 request.Items
                     .Select(i => new OrderItemDto(i.ProductId, i.ProductName, i.UnitPrice, i.Quantity))
                     .ToList(),
